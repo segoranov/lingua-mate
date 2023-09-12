@@ -1,0 +1,52 @@
+version: '3'
+services:
+  lingua-mate-postgres:
+    image: postgres:15.4
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  lingua-mate-keycloak:
+    image: jboss/keycloak:16.1.1
+    environment:
+      DB_VENDOR: postgres
+      DB_ADDR: lingua-mate-postgres
+      DB_DATABASE: keycloakdb
+      DB_USER: dbuser
+      DB_PASSWORD: dbpassword
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+    ports:
+      - '8081:8080'
+    depends_on:
+      - lingua-mate-postgres
+
+  lingua-mate-backend:
+    image: lingua-mate-backend:0.0.1-SNAPSHOT
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://lingua-mate-postgres:5432/linguamatedb
+      SPRING_DATASOURCE_USERNAME: dbuser
+      SPRING_DATASOURCE_PASSWORD: dbpassword
+      KEYCLOAK_SERVER_URL: http://lingua-mate-keycloak:8080/auth/
+    ports:
+      - '8082:8080'
+    depends_on:
+      - lingua-mate-postgres
+      - lingua-mate-keycloak
+
+  # lingua-mate-web-frontend:
+  #   image: nginx:alpine
+  #   ports:
+  #     - '8080:80'
+  #   volumes:
+  #     - ./path/to/angular/dist:/usr/share/nginx/html
+  #   depends_on:
+  #     - lingua-mate-backend
+
+volumes:
+  postgres_data:
